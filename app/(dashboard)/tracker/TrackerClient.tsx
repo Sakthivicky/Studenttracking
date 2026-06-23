@@ -2,6 +2,8 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export default function TrackerClient({
   students = [],
@@ -56,6 +58,41 @@ export default function TrackerClient({
     }
   };
 
+  const downloadReport = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(18);
+    doc.text("NERDSLAB X SHANMUGHA TRAINING REPORT", 14, 20);
+
+    doc.setFontSize(11);
+    doc.text(`Date: ${date}`, 14, 30);
+
+    doc.text("Day Summary:", 14, 42);
+    doc.text(daySummary || "No summary provided", 14, 50);
+
+    doc.text(`Total Students: ${filteredStudents.length}`, 14, 70);
+
+    const tableRows = filteredStudents.map((student) => [
+      student.name,
+      rows[student.id]?.am_status || "-",
+      rows[student.id]?.pm_status || "-",
+      rows[student.id]?.daily_task_score ?? 0,
+      rows[student.id]?.home_task_rating || "-",
+      rows[student.id]?.comments || "-",
+    ]);
+
+    autoTable(doc, {
+      startY: 80,
+      head: [["Student", "AM", "PM", "Score", "Home Task", "Comments"]],
+      body: tableRows,
+      styles: {
+        fontSize: 8,
+      },
+    });
+
+    doc.save(`Daily_Report_${date}.pdf`);
+  };
+
   const loadTrackerData = async () => {
     const { data, error } = await supabase
       .from("daily_tracking")
@@ -89,6 +126,71 @@ export default function TrackerClient({
     loadTrackerData();
   }, [date]);
 
+  const markAllPresent = () => {
+    const updated = { ...rows };
+
+    filteredStudents.forEach((student) => {
+      updated[student.id] = {
+        ...updated[student.id],
+        am_status: "Present",
+        pm_status: "Present",
+      };
+    });
+
+    setRows(updated);
+  };
+
+  const markAllAMPresent = () => {
+    const updated = { ...rows };
+
+    filteredStudents.forEach((student) => {
+      updated[student.id] = {
+        ...updated[student.id],
+        am_status: "Present",
+      };
+    });
+
+    setRows(updated);
+  };
+
+  const markAllPMPresent = () => {
+    const updated = { ...rows };
+
+    filteredStudents.forEach((student) => {
+      updated[student.id] = {
+        ...updated[student.id],
+        pm_status: "Present",
+      };
+    });
+
+    setRows(updated);
+  };
+
+  const clearAllAttendance = () => {
+    setRows({});
+  };
+
+  const attendanceSummary = filteredStudents.reduce(
+    (acc, student) => {
+      const am = rows[student.id]?.am_status;
+      const pm = rows[student.id]?.pm_status;
+
+      if (am === "Present") acc.amPresent += 1;
+      if (am === "Absent") acc.amAbsent += 1;
+
+      if (pm === "Present") acc.pmPresent += 1;
+      if (pm === "Absent") acc.pmAbsent += 1;
+
+      return acc;
+    },
+    {
+      amPresent: 0,
+      amAbsent: 0,
+      pmPresent: 0,
+      pmAbsent: 0,
+    }
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="sticky top-0 z-10 bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4 flex items-center justify-between">
@@ -98,13 +200,23 @@ export default function TrackerClient({
             {filteredStudents.length} Students
           </p>
         </div>
-        <button
-          type="button"
-          onClick={saveAll}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-lg"
-        >
-          Save All
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={saveAll}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-semibold shadow-lg"
+          >
+            Save All
+          </button>
+
+          <button
+            type="button"
+            onClick={downloadReport}
+            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2 rounded-lg font-semibold shadow-lg"
+          >
+            Download PDF
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4 grid md:grid-cols-2 gap-4">
@@ -129,6 +241,79 @@ export default function TrackerClient({
             <option value="3rd">3rd Year</option>
             <option value="final">Final Year</option>
           </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-4">
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500">Students</p>
+          <p className="text-3xl font-bold text-slate-700">
+            {filteredStudents.length}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500">AM Present</p>
+          <p className="text-3xl font-bold text-green-600">
+            {attendanceSummary.amPresent}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500">AM Absent</p>
+          <p className="text-3xl font-bold text-red-600">
+            {attendanceSummary.amAbsent}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500">PM Present</p>
+          <p className="text-3xl font-bold text-green-600">
+            {attendanceSummary.pmPresent}
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+          <p className="text-sm text-gray-500">PM Absent</p>
+          <p className="text-3xl font-bold text-red-600">
+            {attendanceSummary.pmAbsent}
+          </p>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4">
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={markAllPresent}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg"
+          >
+            Mark All Present
+          </button>
+
+          <button
+            type="button"
+            onClick={markAllAMPresent}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg"
+          >
+            Mark All AM Present
+          </button>
+
+          <button
+            type="button"
+            onClick={markAllPMPresent}
+            className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+          >
+            Mark All PM Present
+          </button>
+
+          <button
+            type="button"
+            onClick={clearAllAttendance}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg"
+          >
+            Clear All
+          </button>
         </div>
       </div>
 
@@ -239,9 +424,10 @@ export default function TrackerClient({
                       }))
                     }
                   >
-                    <option value="">Average</option>
-                    <option>Good</option>
-                    <option>Excellent</option>
+                    <option value="">Select</option>
+<option value="Average">Average</option>
+<option value="Good">Good</option>
+<option value="Excellent">Excellent</option>
                   </select>
                 </td>
                 <td className="p-2">

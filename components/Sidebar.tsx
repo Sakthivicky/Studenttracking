@@ -30,10 +30,10 @@ export default function Sidebar() {
         </Link>
 
         <Link
-          href="/reports"
+          href="/assessment"
           className="block p-3 rounded-lg hover:bg-slate-800"
         >
-          Reports
+          Assessment
         </Link>
       </nav>
     </aside>
