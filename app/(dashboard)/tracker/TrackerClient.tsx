@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function TrackerClient({
@@ -55,6 +55,39 @@ export default function TrackerClient({
       alert("Saved successfully");
     }
   };
+
+  const loadTrackerData = async () => {
+    const { data, error } = await supabase
+      .from("daily_tracking")
+      .select("*")
+      .eq("tracking_date", date);
+
+    if (error || !data) return;
+
+    const mapped: Record<number, any> = {};
+
+    data.forEach((row: any) => {
+      mapped[row.student_id] = {
+        am_status: row.am_status || "",
+        pm_status: row.pm_status || "",
+        daily_task_score: row.daily_task_score || 0,
+        home_task_rating: row.home_task_rating || "",
+        comments: row.comments || "",
+      };
+    });
+
+    setRows(mapped);
+
+    if (data.length > 0) {
+      setDaySummary(data[0].day_summary || "");
+    } else {
+      setDaySummary("");
+    }
+  };
+
+  useEffect(() => {
+    loadTrackerData();
+  }, [date]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4">
