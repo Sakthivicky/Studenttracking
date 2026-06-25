@@ -70,7 +70,16 @@ export default function TrackerClient({
     doc.text("Day Summary:", 14, 42);
     doc.text(daySummary || "No summary provided", 14, 50);
 
-    doc.text(`Total Students: ${filteredStudents.length}`, 14, 70);
+    doc.setFontSize(14);
+    doc.text("Attendance Summary", 14, 65);
+
+    doc.setFontSize(11);
+    doc.text(`Total Students: ${filteredStudents.length}`, 14, 75);
+    doc.text(`AM Present: ${attendanceSummary.amPresent}`, 14, 85);
+    doc.text(`AM Absent: ${attendanceSummary.amAbsent}`, 14, 95);
+
+    doc.text(`PM Present: ${attendanceSummary.pmPresent}`, 90, 85);
+    doc.text(`PM Absent: ${attendanceSummary.pmAbsent}`, 90, 95);
 
     const tableRows = filteredStudents.map((student) => [
       student.name,
@@ -82,7 +91,7 @@ export default function TrackerClient({
     ]);
 
     autoTable(doc, {
-      startY: 80,
+      startY: 115,
       head: [["Student", "AM", "PM", "Score", "Home Task", "Comments"]],
       body: tableRows,
       styles: {
